@@ -1,6 +1,5 @@
 Sure, I'll include examples of how to use the CLI for committing changes and creating a merge request, and I'll remove the Dockerfile example. Here's the updated documentation:
 
-```markdown
 # How to Create a Merge Request in GitLab Image Repository for Installing a New Tool
 
 ## Step 1: Create a Branch
