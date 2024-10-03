@@ -33,11 +33,18 @@ def get_gp2_pricing(aws_access_key_id, aws_secret_access_key, aws_session_token=
         # Get the price per GB-month
         on_demand_pricing = price_data['terms']['OnDemand']
         price_dimensions = next(iter(on_demand_pricing.values()))['priceDimensions']
-        price_per_unit = next(iter(price_dimensions.values()))['pricePerUnit']['USD']
+        price_dimension = next(iter(price_dimensions.values()))
+        
+        # Handle potential variations in currency
+        price_per_unit = price_dimension['pricePerUnit']
+        currency, amount = next(iter(price_per_unit.items()))
+        
+        # Get the price unit
+        price_unit = price_dimension.get('unit', 'GB-Mo')
         
         print(f"Region: {location}")
         print(f"Storage Media: {storage_media}")
-        print(f"Price per GB-month: ${price_per_unit}")
+        print(f"Price per {price_unit}: {currency} {amount}")
         print("--------------------")
 
 if __name__ == "__main__":
