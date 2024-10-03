@@ -1,9 +1,17 @@
 import boto3
 import json
+import os
 
-def get_gp2_pricing():
-    # Initialize the pricing client
-    pricing_client = boto3.client('pricing', region_name='us-east-1')
+def get_gp2_pricing(aws_access_key_id, aws_secret_access_key, aws_session_token=None):
+    # Initialize the pricing client with provided credentials
+    session = boto3.Session(
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
+        aws_session_token=aws_session_token,
+        region_name='us-east-1'  # Pricing API is available in us-east-1
+    )
+    
+    pricing_client = session.client('pricing')
 
     # Get the pricing for gp2 volumes
     response = pricing_client.get_products(
@@ -33,4 +41,15 @@ def get_gp2_pricing():
         print("--------------------")
 
 if __name__ == "__main__":
-    get_gp2_pricing()
+    # Retrieve AWS credentials from environment variables
+    aws_access_key_id = os.environ.get('AWS_ACCESS_KEY_ID')
+    aws_secret_access_key = os.environ.get('AWS_SECRET_ACCESS_KEY')
+    aws_session_token = os.environ.get('AWS_SESSION_TOKEN')
+
+    if not aws_access_key_id or not aws_secret_access_key:
+        print("AWS credentials not found in environment variables.")
+        print("Please set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.")
+        print("If you're using temporary credentials, also set AWS_SESSION_TOKEN.")
+        exit(1)
+
+    get_gp2_pricing(aws_access_key_id, aws_secret_access_key, aws_session_token)
