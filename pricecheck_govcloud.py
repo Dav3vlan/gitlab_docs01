@@ -1,41 +1,27 @@
-import boto3
-import json
-import os
-
-def get_pricing_info(pricing_client, filters):
-    response = pricing_client.get_products(
-        ServiceCode='AmazonEC2',
-        Filters=filters
-    )
-    print(f"Number of items in PriceList: {len(response['PriceList'])}")
-    return response['PriceList']
-
-def print_pricing_info(price_list):
+def print_govcloud_pricing_info(price_list):
     for price_item in price_list:
         price_data = json.loads(price_item)
         attributes = price_data['product']['attributes']
         location = attributes.get('location', 'N/A')
-        volume_api_name = attributes.get('volumeApiName', 'N/A')
-        storage_media = attributes.get('storageMedia', 'N/A')
-        
-        print(f"Region: {location}")
-        print(f"Volume API Name: {volume_api_name}")
-        print(f"Storage Media: {storage_media}")
-        print("--------------------")
 
-def get_available_locations(pricing_client):
-    response = pricing_client.get_attribute_values(
-        ServiceCode='AmazonEC2',
-        AttributeName='location'
-    )
-    return [attr['Value'] for attr in response['AttributeValues']]
+        # Filter for GovCloud locations
+        if "AWS GovCloud" in location:
+            volume_api_name = attributes.get('volumeApiName', 'N/A')
+            storage_media = attributes.get('storageMedia', 'N/A')
 
-def get_available_volume_types(pricing_client):
-    response = pricing_client.get_attribute_values(
-        ServiceCode='AmazonEC2',
-        AttributeName='volumeApiName'
-    )
-    return [attr['Value'] for attr in response['AttributeValues']]
+            # Extract pricePerUnit for OnDemand terms (USD)
+            on_demand_terms = price_data.get('terms', {}).get('OnDemand', {})
+            price_per_unit = None
+            for term_key, term_value in on_demand_terms.items():
+                price_dimensions = term_value.get('priceDimensions', {})
+                for dimension_key, dimension_value in price_dimensions.items():
+                    price_per_unit = dimension_value.get('pricePerUnit', {}).get('USD', 'N/A')
+
+            print(f"Region: {location}")
+            print(f"Volume API Name: {volume_api_name}")
+            print(f"Storage Media: {storage_media}")
+            print(f"Price per Unit (USD): {price_per_unit}")
+            print("--------------------")
 
 def main(aws_access_key_id, aws_secret_access_key, aws_session_token=None):
     try:
@@ -49,33 +35,17 @@ def main(aws_access_key_id, aws_secret_access_key, aws_session_token=None):
         pricing_client = session.client('pricing')
         print("Successfully created pricing client.")
 
-        # 1. Try to get gp2 pricing without GovCloud filter
+        # Query for gp2 volumes without GovCloud filter
         print("\nQuerying for gp2 volumes without GovCloud filter:")
         gp2_filters = [
             {'Type': 'TERM_MATCH', 'Field': 'volumeApiName', 'Value': 'gp2'},
             {'Type': 'TERM_MATCH', 'Field': 'productFamily', 'Value': 'Storage'}
         ]
         gp2_price_list = get_pricing_info(pricing_client, gp2_filters)
-        print_pricing_info(gp2_price_list)
 
-        # 2. Get all available locations
-        print("\nAvailable locations:")
-        locations = get_available_locations(pricing_client)
-        print(json.dumps(locations, indent=2))
-
-        # 3. Get available volume types for GovCloud
-        print("\nAvailable volume types:")
-        volume_types = get_available_volume_types(pricing_client)
-        print(json.dumps(volume_types, indent=2))
-
-        # 4. Try to get any storage pricing for GovCloud
-        print("\nQuerying for any storage in GovCloud:")
-        govcloud_filters = [
-            {'Type': 'TERM_MATCH', 'Field': 'productFamily', 'Value': 'Storage'},
-            {'Type': 'TERM_MATCH', 'Field': 'locationType', 'Value': 'AWS GovCloud (US)'}
-        ]
-        govcloud_price_list = get_pricing_info(pricing_client, govcloud_filters)
-        print_pricing_info(govcloud_price_list)
+        # Print GovCloud-specific pricing information from the result
+        print("\nFiltering and printing GovCloud pricing information from gp2 results:")
+        print_govcloud_pricing_info(gp2_price_list)
 
     except Exception as e:
         print(f"An error occurred: {str(e)}")
