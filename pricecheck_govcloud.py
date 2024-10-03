@@ -1,3 +1,15 @@
+import boto3
+import json
+import os
+
+def get_pricing_info(pricing_client, filters):
+    response = pricing_client.get_products(
+        ServiceCode='AmazonEC2',
+        Filters=filters
+    )
+    print(f"Number of items in PriceList: {len(response['PriceList'])}")
+    return response['PriceList']
+
 def print_govcloud_pricing_info(price_list):
     for price_item in price_list:
         price_data = json.loads(price_item)
