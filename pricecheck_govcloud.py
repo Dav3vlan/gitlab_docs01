@@ -2,9 +2,43 @@ import boto3
 import json
 import os
 
-def get_gp2_pricing_govcloud(aws_access_key_id, aws_secret_access_key, aws_session_token=None):
+def get_pricing_info(pricing_client, filters):
+    response = pricing_client.get_products(
+        ServiceCode='AmazonEC2',
+        Filters=filters
+    )
+    print(f"Number of items in PriceList: {len(response['PriceList'])}")
+    return response['PriceList']
+
+def print_pricing_info(price_list):
+    for price_item in price_list:
+        price_data = json.loads(price_item)
+        attributes = price_data['product']['attributes']
+        location = attributes.get('location', 'N/A')
+        volume_api_name = attributes.get('volumeApiName', 'N/A')
+        storage_media = attributes.get('storageMedia', 'N/A')
+        
+        print(f"Region: {location}")
+        print(f"Volume API Name: {volume_api_name}")
+        print(f"Storage Media: {storage_media}")
+        print("--------------------")
+
+def get_available_locations(pricing_client):
+    response = pricing_client.get_attribute_values(
+        ServiceCode='AmazonEC2',
+        AttributeName='location'
+    )
+    return [attr['Value'] for attr in response['AttributeValues']]
+
+def get_available_volume_types(pricing_client):
+    response = pricing_client.get_attribute_values(
+        ServiceCode='AmazonEC2',
+        AttributeName='volumeApiName'
+    )
+    return [attr['Value'] for attr in response['AttributeValues']]
+
+def main(aws_access_key_id, aws_secret_access_key, aws_session_token=None):
     try:
-        # Initialize the pricing client with provided credentials
         session = boto3.Session(
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=aws_secret_access_key,
@@ -15,52 +49,38 @@ def get_gp2_pricing_govcloud(aws_access_key_id, aws_secret_access_key, aws_sessi
         pricing_client = session.client('pricing')
         print("Successfully created pricing client.")
 
-        # Get the pricing for gp2 volumes, filtering for GovCloud
-        response = pricing_client.get_products(
-            ServiceCode='AmazonEC2',
-            Filters=[
-                {'Type': 'TERM_MATCH', 'Field': 'volumeApiName', 'Value': 'gp2'},
-                {'Type': 'TERM_MATCH', 'Field': 'productFamily', 'Value': 'Storage'},
-                {'Type': 'TERM_MATCH', 'Field': 'locationType', 'Value': 'AWS GovCloud (US)'}
-            ]
-        )
-        
-        print(f"API Response received. Number of items in PriceList: {len(response['PriceList'])}")
-        
-        if len(response['PriceList']) == 0:
-            print("No pricing information found matching the criteria.")
-            return
+        # 1. Try to get gp2 pricing without GovCloud filter
+        print("\nQuerying for gp2 volumes without GovCloud filter:")
+        gp2_filters = [
+            {'Type': 'TERM_MATCH', 'Field': 'volumeApiName', 'Value': 'gp2'},
+            {'Type': 'TERM_MATCH', 'Field': 'productFamily', 'Value': 'Storage'}
+        ]
+        gp2_price_list = get_pricing_info(pricing_client, gp2_filters)
+        print_pricing_info(gp2_price_list)
 
-        # Parse and print the pricing information
-        for price_item in response['PriceList']:
-            price_data = json.loads(price_item)
-            
-            # Extract relevant information
-            location = price_data['product']['attributes']['location']
-            storage_media = price_data['product']['attributes']['storageMedia']
-            
-            # Get the price per GB-month
-            on_demand_pricing = price_data['terms']['OnDemand']
-            price_dimensions = next(iter(on_demand_pricing.values()))['priceDimensions']
-            price_dimension = next(iter(price_dimensions.values()))
-            
-            # Handle potential variations in currency
-            price_per_unit = price_dimension['pricePerUnit']
-            currency, amount = next(iter(price_per_unit.items()))
-            
-            # Get the price unit
-            price_unit = price_dimension.get('unit', 'GB-Mo')
-            
-            print(f"Region: {location}")
-            print(f"Storage Media: {storage_media}")
-            print(f"Price per {price_unit}: {currency} {amount}")
-            print("--------------------")
-    
+        # 2. Get all available locations
+        print("\nAvailable locations:")
+        locations = get_available_locations(pricing_client)
+        print(json.dumps(locations, indent=2))
+
+        # 3. Get available volume types for GovCloud
+        print("\nAvailable volume types:")
+        volume_types = get_available_volume_types(pricing_client)
+        print(json.dumps(volume_types, indent=2))
+
+        # 4. Try to get any storage pricing for GovCloud
+        print("\nQuerying for any storage in GovCloud:")
+        govcloud_filters = [
+            {'Type': 'TERM_MATCH', 'Field': 'productFamily', 'Value': 'Storage'},
+            {'Type': 'TERM_MATCH', 'Field': 'locationType', 'Value': 'AWS GovCloud (US)'}
+        ]
+        govcloud_price_list = get_pricing_info(pricing_client, govcloud_filters)
+        print_pricing_info(govcloud_price_list)
+
     except Exception as e:
         print(f"An error occurred: {str(e)}")
 
 if __name__ == "__main__":
-    # Retrieve AWS credentials from environment variables
     aws_access_key_id = os.environ.get('AWS_ACCESS_KEY_ID')
     aws_secret_access_key = os.environ.get('AWS_SECRET_ACCESS_KEY')
     aws_session_token = os.environ.get('AWS_SESSION_TOKEN')
@@ -72,4 +92,4 @@ if __name__ == "__main__":
         exit(1)
     
     print("AWS credentials found in environment variables.")
-    get_gp2_pricing_govcloud(aws_access_key_id, aws_secret_access_key, aws_session_token)
+    main(aws_access_key_id, aws_secret_access_key, aws_session_token)
