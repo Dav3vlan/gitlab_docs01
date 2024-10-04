@@ -100,7 +100,7 @@ def main(aws_access_key_id, aws_secret_access_key, aws_session_token=None):
         pricing_client = commercial_session.client('pricing')
         dynamodb_client = govcloud_session.client('dynamodb')
 
-        table_name = "VolumePricing"  # Ensure this table exists in your DynamoDB GovCloud instance
+        table_name = "VolumePricing"
 
         print("Successfully created pricing client (Commercial) and DynamoDB client (GovCloud).")
 
