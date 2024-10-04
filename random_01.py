@@ -11,6 +11,28 @@ def get_pricing_info(pricing_client, filters):
     print(f"Number of items in PriceList: {len(response['PriceList'])}")
     return response['PriceList']
 
+def ensure_table_exists(dynamo_client, table_name):
+    try:
+        dynamo_client.describe_table(TableName=table_name)
+        print(f"Table {table_name} already exists.")
+    except dynamo_client.exceptions.ResourceNotFoundException:
+        print(f"Table {table_name} does not exist. Creating...")
+        dynamo_client.create_table(
+            TableName=table_name,
+            KeySchema=[
+                {'AttributeName': 'VolumeId', 'KeyType': 'HASH'},
+                {'AttributeName': 'AccountId', 'KeyType': 'RANGE'}
+            ],
+            AttributeDefinitions=[
+                {'AttributeName': 'VolumeId', 'AttributeType': 'S'},
+                {'AttributeName': 'AccountId', 'AttributeType': 'S'}
+            ],
+            BillingMode='PAY_PER_REQUEST'
+        )
+        dynamo_client.get_waiter('table_exists').wait(TableName=table_name)
+        print(f"Table {table_name} created successfully.")
+
+
 # Function to store data in DynamoDB in GovCloud
 def store_in_dynamodb(dynamodb_client, table_name, volume_api_name, storage_media, price_per_unit, location):
     try:
@@ -54,6 +76,7 @@ def print_and_store_govcloud_pricing_info(price_list, dynamodb_client, table_nam
             print("--------------------")
 
             # Store the data in DynamoDB
+            ensure_table_exists(dynamo_client, table_name)
             store_in_dynamodb(dynamodb_client, table_name, volume_api_name, storage_media, price_per_unit, location)
 
 def main(aws_access_key_id, aws_secret_access_key, aws_session_token=None):
