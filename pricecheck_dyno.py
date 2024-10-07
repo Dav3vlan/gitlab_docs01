@@ -79,6 +79,27 @@ def store_in_dynamodb(dynamodb_client, table_name, volume_id, account_id, volume
     except Exception as e:
         print(f"Error storing data in DynamoDB: {str(e)}")
 
+def store_or_update_in_dynamodb(dynamodb_client, table_name, volume_id, account_id, volume_api_name, storage_media, price_per_unit, location):
+    try:
+        response = dynamodb_client.update_item(
+            TableName=table_name,
+            Key={
+                'VolumeId': {'S': volume_id},
+                'AccountId': {'S': account_id}
+            },
+            UpdateExpression="SET VolumeApiName = :volume_api_name, StorageMedia = :storage_media, PricePerUnit = :price_per_unit, Location = :location",
+            ExpressionAttributeValues={
+                ':volume_api_name': {'S': volume_api_name},
+                ':storage_media': {'S': storage_media},
+                ':price_per_unit': {'S': str(price_per_unit)},
+                ':location': {'S': location}
+            },
+            ReturnValues="UPDATED_NEW"
+        )
+        print(f"Data inserted or updated successfully for {volume_api_name} in {location} with VolumeId {volume_id}")
+    except Exception as e:
+        print(f"Error storing or updating data in DynamoDB: {str(e)}")
+
 # Function to filter and store GovCloud pricing info in DynamoDB
 def print_and_store_govcloud_pricing_info(price_list, dynamodb_client, table_name):
     for price_item in price_list:
