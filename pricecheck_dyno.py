@@ -3,6 +3,15 @@ import json
 import os
 import random
 import string
+import time
+import random
+
+# Function to generate a timestamp-based ID with a random component
+def generate_timestamp_based_id():
+    timestamp = int(time.time() * 1000)  # Current time in milliseconds
+    random_number = random.randint(1000, 9999)  # 4-digit random number
+    return f"{timestamp}-{random_number}"
+
 
 if not gov_aws_session_token:
         print("GovCloud session token is missing. Please set it to proceed.")
