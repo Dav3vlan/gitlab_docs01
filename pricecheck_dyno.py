@@ -2,6 +2,15 @@ import boto3
 import json
 import os
 
+if not gov_aws_session_token:
+        print("GovCloud session token is missing. Please set it to proceed.")
+        return
+    
+    # Validate Commercial session token
+if not aws_session_token:
+      print("Commercial AWS session token is missing. Please set it to proceed.")
+      return
+    
 def validate_session_token(session):
     try:
         sts_client = session.client('sts')
