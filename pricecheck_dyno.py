@@ -2,6 +2,16 @@ import boto3
 import json
 import os
 
+def validate_session_token(session):
+    try:
+        sts_client = session.client('sts')
+        identity = sts_client.get_caller_identity()
+        print(f"Token is valid. Account: {identity['Account']}, ARN: {identity['Arn']}")
+        return True
+    except Exception as e:
+        print(f"Error validating session token: {str(e)}")
+        return False
+
 # Function to query EC2 pricing from the commercial AWS region
 def get_pricing_info(pricing_client, filters):
     response = pricing_client.get_products(
@@ -88,7 +98,7 @@ def main(aws_access_key_id, aws_secret_access_key, aws_session_token=None):
             aws_session_token=aws_session_token,
             region_name='us-east-1'  # Commercial AWS region
         )
-        
+        pricing_client = commercial_session.client('pricing')
         # Create a session for GovCloud (for DynamoDB operations)
         govcloud_session = boto3.Session(
             aws_access_key_id=aws_access_key_id,
@@ -96,10 +106,13 @@ def main(aws_access_key_id, aws_secret_access_key, aws_session_token=None):
             aws_session_token=aws_session_token,
             region_name='us-gov-west-1'  # GovCloud region
         )
-        
-        pricing_client = commercial_session.client('pricing')
-        dynamodb_client = govcloud_session.client('dynamodb')
 
+        # Validate the session token before proceeding
+        if not validate_session_token(govcloud_session):
+            print("Invalid GovCloud session token. Exiting.")
+            return
+        
+        dynamodb_client = govcloud_session.client('dynamodb')
         table_name = "VolumePricing"
 
         print("Successfully created pricing client (Commercial) and DynamoDB client (GovCloud).")
