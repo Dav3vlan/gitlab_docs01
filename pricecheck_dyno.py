@@ -1,6 +1,8 @@
 import boto3
 import json
 import os
+import random
+import string
 
 if not gov_aws_session_token:
         print("GovCloud session token is missing. Please set it to proceed.")
@@ -53,7 +55,7 @@ def ensure_table_exists(dynamo_client, table_name):
 
 
 # Function to store data in DynamoDB in GovCloud
-def store_in_dynamodb(dynamodb_client, table_name, volume_api_name, storage_media, price_per_unit, location):
+def store_in_dynamodb(dynamodb_client, table_name, volume_id, account_id, volume_api_name, storage_media, price_per_unit, location):
     try:
         response = dynamodb_client.put_item(
             TableName=table_name,
@@ -96,11 +98,21 @@ def print_and_store_govcloud_pricing_info(price_list, dynamodb_client, table_nam
 
             # Store the data in DynamoDB
             ensure_table_exists(dynamo_client, table_name)
-            store_in_dynamodb(dynamodb_client, table_name, volume_api_name, storage_media, price_per_unit, location)
+            volume_id = generate_timestamp_based_id()
+            account_id = generate_timestamp_based_id()
+            store_in_dynamodb(dynamodb_client, table_name, volume_id, account_id, volume_api_name, storage_media, price_per_unit, location)
+def generate_random_id(length=8):
+     characters = string.ascii_letters + string.digits
+     return ''.join(random.choice(characters) for _ in range(length))
 
 def main(aws_access_key_id, aws_secret_access_key, aws_session_token=None):
     try:
         # Create a session for the commercial AWS region (for pricing API calls)
+      
+        # Generate random VolumeId and AccountId using alphanumeric strings
+        volume_id = generate_random_id()  # Example: 'a8Kz3Nf2'
+        account_id = generate_random_id()  # Example: '7jS5X9tB'
+            
         commercial_session = boto3.Session(
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=aws_secret_access_key,
