@@ -34,6 +34,50 @@ def print_govcloud_pricing_info(price_list):
             print(f"Storage Media: {storage_media}")
             print(f"Price per Unit (USD): {price_per_unit}")
             print("--------------------")
+#1008            
+def ensure_table_exists(table_name):
+    dynamodb = boto3.client('dynamodb')
+
+    # Check if the table exists
+    try:
+        response = dynamodb.describe_table(TableName=table_name)
+        print(f"Table {table_name} already exists.")
+    except dynamodb.exceptions.ResourceNotFoundException:
+        # If the table does not exist, create it
+        try:
+            table = dynamodb.create_table(
+                TableName=table_name,
+                KeySchema=[
+                    {
+                        'AttributeName': 'Account',  # Partition key
+                        'KeyType': 'HASH'
+                    },
+                    {
+                        'AttributeName': 'region',  # Sort key
+                        'KeyType': 'RANGE'
+                    }
+                ],
+                AttributeDefinitions=[
+                    {
+                        'AttributeName': 'Account',
+                        'AttributeType': 'S'
+                    },
+                    {
+                        'AttributeName': 'region',
+                        'AttributeType': 'S'
+                    }
+                ],
+                ProvisionedThroughput={
+                    'ReadCapacityUnits': 5,
+                    'WriteCapacityUnits': 5
+                }
+            )
+            print(f"Table {table_name} created successfully.")
+            # Wait until the table exists
+            table.meta.client.get_waiter('table_exists').wait(TableName=table_name)
+        except ClientError as e:
+            print(f"Error creating table: {e}")
+
 
 def main(aws_access_key_id, aws_secret_access_key, aws_session_token=None):
     try:
