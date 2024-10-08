@@ -134,6 +134,38 @@ def print_and_store_govcloud_pricing_info(price_list, dynamodb_client, table_nam
 def generate_random_id(length=8):
      characters = string.ascii_letters + string.digits
      return ''.join(random.choice(characters) for _ in range(length))
+#1008    
+def get_govcloud_pricing_info(price_list):
+    pricing_info = []  # List to store location and price_per_unit data
+
+    for price_item in price_list:
+        price_data = json.loads(price_item)
+        attributes = price_data['product']['attributes']
+        location = attributes.get('location', 'N/A')
+
+        # Filter for GovCloud locations
+        if "AWS GovCloud" in location:
+            volume_api_name = attributes.get('volumeApiName', 'N/A')
+            storage_media = attributes.get('storageMedia', 'N/A')
+
+            # Extract pricePerUnit for OnDemand terms (USD)
+            on_demand_terms = price_data.get('terms', {}).get('OnDemand', {})
+            price_per_unit = None
+            for term_key, term_value in on_demand_terms.items():
+                price_dimensions = term_value.get('priceDimensions', {})
+                for dimension_key, dimension_value in price_dimensions.items():
+                    price_per_unit = dimension_value.get('pricePerUnit', {}).get('USD', 'N/A')
+
+            # Add the location and price_per_unit to the pricing_info list
+            pricing_info.append({'location': location, 'price_per_unit': price_per_unit})
+
+    return pricing_info  # Return the list of pricing information
+    
+    # for pricing_item in govcloud_pricing_info:
+    #     location = pricing_item['location']
+    #     price_per_unit = pricing_item['price_per_unit']
+    #     print(f"Location: {location}, Price per Unit: {price_per_unit}")
+
 
 def main(aws_access_key_id, aws_secret_access_key, aws_session_token=None):
     try:
