@@ -40,43 +40,45 @@ def ensure_table_exists(dydb_client, table_name):
     try:
         response = dydb_client.describe_table(TableName=table_name)
         print(f"Table {table_name} already exists.")
-    except dydb_client.exceptions.ResourceNotFoundException:
-        # If the table does not exist, create it
-        try:
-            table = dydb_client.create_table(
-                TableName=table_name,
-                KeySchema=[
-                    {
-                        'AttributeName': 'Account',  # Partition key
-                        'KeyType': 'HASH'
-                    },
-                    {
-                        'AttributeName': 'region',  # Sort key
-                        'KeyType': 'RANGE'
+    except ClientError as e:
+        # Check if the error is that the table doesn't exist
+        if e.response['Error']['Code'] == 'ResourceNotFoundException':
+            # If the table does not exist, create it
+            try:
+                table = dydb_client.create_table(
+                    TableName=table_name,
+                    KeySchema=[
+                        {
+                            'AttributeName': 'Account',  # Partition key
+                            'KeyType': 'HASH'
+                        },
+                        {
+                            'AttributeName': 'region',  # Sort key
+                            'KeyType': 'RANGE'
+                        }
+                    ],
+                    AttributeDefinitions=[
+                        {
+                            'AttributeName': 'Account',
+                            'AttributeType': 'S'
+                        },
+                        {
+                            'AttributeName': 'region',
+                            'AttributeType': 'S'
+                        }
+                    ],
+                    ProvisionedThroughput={
+                        'ReadCapacityUnits': 5,
+                        'WriteCapacityUnits': 5
                     }
-                ],
-                AttributeDefinitions=[
-                    {
-                        'AttributeName': 'Account',
-                        'AttributeType': 'S'
-                    },
-                    {
-                        'AttributeName': 'region',
-                        'AttributeType': 'S'
-                    }
-                ],
-                ProvisionedThroughput={
-                    'ReadCapacityUnits': 5,
-                    'WriteCapacityUnits': 5
-                }
-            )
-            print(f"Table {table_name} created successfully.")
-            # Wait until the table exists
-            table.meta.client.get_waiter('table_exists').wait(TableName=table_name)
-        except ClientError as e:
-            print(f"Error creating table: {e}")
-
-
+                )
+                print(f"Table {table_name} created successfully.")
+                # Wait until the table exists
+                dydb_client.get_waiter('table_exists').wait(TableName=table_name)
+            except ClientError as e:
+                print(f"Error creating table: {e}")
+        else:
+            print(f"Error describing table: {e}")
 
 def main(aws_access_key_id, aws_secret_access_key, aws_session_token=None):
     try:
