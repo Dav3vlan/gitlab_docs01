@@ -108,14 +108,21 @@ def main(aws_access_key_id, aws_secret_access_key, aws_session_token=None):
         print(f"An error occurred: {str(e)}")
 
 
-def store_savings(account, volume_size, region, com_pricing, table):
+import boto3
+
+def store_savings(account, volume_size, region, com_pricing, dydb_client, vol_savings_table):
     try:
-        # Fetch the current size for the tenant (account)
-        response = table.get_item(Key={'Account': account})
+        # Fetch the current size for the tenant (account) using client
+        response = dydb_client.get_item(
+            TableName=vol_savings_table,
+            Key={
+                'Account': {'S': account}  # Assuming Account is a string
+            }
+        )
         
         if 'Item' in response:
             # Previous saved size exists, get the value
-            previous_size = response['Item']['Size']
+            previous_size = int(response['Item']['Size']['N'])  # Assuming size is stored as a number
         else:
             # No previous data, initialize to 0
             previous_size = 0
@@ -129,21 +136,35 @@ def store_savings(account, volume_size, region, com_pricing, table):
         # Calculate the savings (total size * cost per GB)
         savings = total_size * volume_cost_per_gb
         
-        # Update the table with the new size and savings
-        table.put_item(
+        # Update the table with the new size and savings using put_item
+        dydb_client.put_item(
+            TableName=vol_savings_table,
             Item={
-                'Account': account,
-                'Size': total_size,
-                'Savings': savings
+                'Account': {'S': account},
+                'Size': {'N': str(total_size)},  # DynamoDB expects numbers as strings
+                'Savings': {'N': str(savings)}
             }
         )
         
         print(f"Updated savings for account {account}: {savings} USD")
         return savings
         
-    except ClientError as e:
+    except dydb_client.exceptions.ClientError as e:
         print(f"Failed to update DynamoDB: {e.response['Error']['Message']}")
         return None
+
+# Example usage
+govcloud_session = boto3.Session()  # Replace with your actual session initialization
+dydb_client = govcloud_session.client('dynamodb')
+vol_savings_table = 'volumesavingtracker'
+
+account = '123456789012'
+volume_size = 50
+region = 'us-east-1'
+com_pricing = {'us-east-1': 0.10}  # Example cost per GB
+
+# store_savings(account, volume_size, region, com_pricing, dydb_client, vol_savings_table)
+
 
 
 if __name__ == "__main__":
