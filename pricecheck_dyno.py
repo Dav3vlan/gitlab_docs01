@@ -166,6 +166,7 @@ def get_govcloud_pricing_info(price_list):
     #     price_per_unit = pricing_item['price_per_unit']
     #     print(f"Location: {location}, Price per Unit: {price_per_unit}")
 
+#1009
 def ensure_vol_savings_table(table_name, region):
     """
     Check if the specified DynamoDB table exists, and create it if it doesn't.
