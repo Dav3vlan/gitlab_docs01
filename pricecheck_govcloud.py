@@ -107,6 +107,45 @@ def main(aws_access_key_id, aws_secret_access_key, aws_session_token=None):
     except Exception as e:
         print(f"An error occurred: {str(e)}")
 
+
+def store_savings(account, volume_size, region, com_pricing, table):
+    try:
+        # Fetch the current size for the tenant (account)
+        response = table.get_item(Key={'Account': account})
+        
+        if 'Item' in response:
+            # Previous saved size exists, get the value
+            previous_size = response['Item']['Size']
+        else:
+            # No previous data, initialize to 0
+            previous_size = 0
+        
+        # Add the current volume size to the previous size
+        total_size = previous_size + volume_size
+        
+        # Get the cost per GB in this region
+        volume_cost_per_gb = com_pricing[region]
+        
+        # Calculate the savings (total size * cost per GB)
+        savings = total_size * volume_cost_per_gb
+        
+        # Update the table with the new size and savings
+        table.put_item(
+            Item={
+                'Account': account,
+                'Size': total_size,
+                'Savings': savings
+            }
+        )
+        
+        print(f"Updated savings for account {account}: {savings} USD")
+        return savings
+        
+    except ClientError as e:
+        print(f"Failed to update DynamoDB: {e.response['Error']['Message']}")
+        return None
+
+
 if __name__ == "__main__":
     aws_access_key_id = os.environ.get('AWS_ACCESS_KEY_ID')
     aws_secret_access_key = os.environ.get('AWS_SECRET_ACCESS_KEY')
