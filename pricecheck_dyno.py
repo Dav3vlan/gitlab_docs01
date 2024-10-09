@@ -166,7 +166,54 @@ def get_govcloud_pricing_info(price_list):
     #     price_per_unit = pricing_item['price_per_unit']
     #     print(f"Location: {location}, Price per Unit: {price_per_unit}")
 
-
+def ensure_vol_savings_table(table_name, region):
+    """
+    Check if the specified DynamoDB table exists, and create it if it doesn't.
+    
+    :param table_name: Name of the DynamoDB table
+    :param region: AWS region
+    :return: True if the table exists or was created successfully, False otherwise
+    """
+    dynamodb = boto3.resource('dynamodb', region_name=region)
+    
+    try:
+        table = dynamodb.Table(table_name)
+        table.load()
+        logger.info(f"Table {table_name} already exists.")
+        return True
+    except ClientError as e:
+        if e.response['Error']['Code'] == 'ResourceNotFoundException':
+            logger.info(f"Table {table_name} does not exist. Creating it now...")
+            try:
+                table = dynamodb.create_table(
+                    TableName=table_name,
+                    KeySchema=[
+                        {
+                            'AttributeName': 'AccountId',
+                            'KeyType': 'HASH'
+                        }
+                    ],
+                    AttributeDefinitions=[
+                        {
+                            'AttributeName': 'AccountId',
+                            'AttributeType': 'S'
+                        }
+                    ],
+                    ProvisionedThroughput={
+                        'ReadCapacityUnits': 5,
+                        'WriteCapacityUnits': 5
+                    }
+                )
+                table.wait_until_exists()
+                logger.info(f"Table {table_name} created successfully.")
+                return True
+            except ClientError as create_error:
+                logger.error(f"Error creating table: {create_error}")
+                return False
+        else:
+            logger.error(f"Unexpected error: {e}")
+            return False
+            
 def main(aws_access_key_id, aws_secret_access_key, aws_session_token=None):
     try:
         # Create a session for the commercial AWS region (for pricing API calls)
