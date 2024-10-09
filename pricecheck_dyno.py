@@ -214,7 +214,61 @@ def ensure_vol_savings_table(table_name, region):
         else:
             logger.error(f"Unexpected error: {e}")
             return False
-            
+
+def track_volume_savings(account, size, region):
+    """
+    Track the savings for each tenant by storing and updating volume sizes in DynamoDB.
+    :param account: AWS account ID (tenant)
+    :param size: Size of the gp2 volume being deleted (in GB)
+    :param region: AWS region of the volume
+    :return: Updated total savings for the account
+    """
+    
+    # Initialize DynamoDB client
+    dynamodb = boto3.resource('dynamodb', region_name=region)
+    table_name = 'VolumesSavingsTracker'
+    
+    # Check if the DynamoDB table exists
+    try:
+        table = dynamodb.Table(table_name)
+        table.load()
+    except ClientError as e:
+        if e.response['Error']['Code'] == 'ResourceNotFoundException':
+            logger.error(f"Table {table_name} does not exist. Please create it first.")
+            return None
+        else:
+            logger.error(f"Unexpected error: {e}")
+            return None
+    
+    # Get the current savings value for the account
+    try:
+        response = table.get_item(Key={'AccountId': account})
+    except ClientError as e:
+        logger.error(f"Error retrieving item: {e}")
+        return None
+    
+    current_savings = response.get('Item', {}).get('TotalSavings', 0)
+    
+    # Calculate new savings
+    # Note: You'll need to implement a function to get the average volume cost for the region
+    avg_volume_cost = get_average_volume_cost(region)  # Implement this function
+    new_savings = current_savings + (size * avg_volume_cost)
+    
+    # Update the item in DynamoDB
+    try:
+        table.put_item(
+            Item={
+                'AccountId': account,
+                'TotalSavings': new_savings
+            }
+        )
+    except ClientError as e:
+        logger.error(f"Error updating item: {e}")
+        return None
+    
+    logger.info(f"Updated savings for account {account}: {new_savings}")
+    return new_savings
+    
 def main(aws_access_key_id, aws_secret_access_key, aws_session_token=None):
     try:
         # Create a session for the commercial AWS region (for pricing API calls)
