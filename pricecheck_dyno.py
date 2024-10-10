@@ -268,6 +268,50 @@ def track_volume_savings(account, size, region):
     
     logger.info(f"Updated savings for account {account}: {new_savings}")
     return new_savings
+def store_savings(account, volume_size, region, com_pricing, dydb_client, vol_savings_table):
+    try:
+        # Fetch the current size for the tenant (account) using client
+        response = dydb_client.get_item(
+            TableName=vol_savings_table,
+            Key={
+                'Account': {'S': str(account)},  # Convert account to string
+                'Region': {'S': region}          # Sort key region is already a string
+            }
+        )
+        
+        if 'Item' in response:
+            # Previous saved size exists, get the value
+            previous_size = int(response['Item']['Size']['N'])  # Assuming size is stored as a number
+        else:
+            # No previous data, initialize to 0
+            previous_size = 0
+        
+        # Add the current volume size to the previous size
+        total_size = previous_size + int(volume_size)  # Ensure volume_size is treated as an integer
+        
+        # Get the cost per GB in this region
+        volume_cost_per_gb = com_pricing[region]
+        
+        # Calculate the savings (total size * cost per GB)
+        savings = total_size * volume_cost_per_gb
+        
+        # Update the table with the new size and savings using put_item
+        dydb_client.put_item(
+            TableName=vol_savings_table,
+            Item={
+                'Account': {'S': str(account)},   # Ensure account is a string
+                'Region': {'S': region},          # Ensure region is a string
+                'Size': {'N': str(total_size)},   # Numbers must be stored as strings in DynamoDB
+                'Savings': {'N': str(savings)}    # Savings as a number
+            }
+        )
+        
+        print(f"Updated savings for account {account}: {savings} USD")
+        return savings
+        
+    except dydb_client.exceptions.ClientError as e:
+        print(f"Failed to update DynamoDB: {e.response['Error']['Message']}")
+        return None
     
 def main(aws_access_key_id, aws_secret_access_key, aws_session_token=None):
     try:
