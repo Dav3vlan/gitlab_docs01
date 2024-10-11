@@ -276,6 +276,7 @@ def track_volume_savings(account, size, region):
     
     logger.info(f"Updated savings for account {account}: {new_savings}")
     return new_savings
+    
 def store_savings(account, volume_size, region, com_pricing, dydb_client, vol_savings_table):
     try:
         # Fetch the current size for the tenant (account) using client
@@ -297,8 +298,16 @@ def store_savings(account, volume_size, region, com_pricing, dydb_client, vol_sa
         # Add the current volume size to the previous size
         total_size = previous_size + int(volume_size)  # Ensure volume_size is treated as an integer
         
-        # Get the cost per GB in this region
-        volume_cost_per_gb = com_pricing[region]
+        # Find the price per GB for the region
+        volume_cost_per_gb = None
+        for pricing in com_pricing:
+            if pricing['location'] == region:
+                volume_cost_per_gb = float(pricing['price_per_unit'])
+                break
+        
+        if volume_cost_per_gb is None:
+            print(f"Pricing not found for region: {region}")
+            return None
         
         # Calculate the savings (total size * cost per GB)
         savings = total_size * volume_cost_per_gb
@@ -320,6 +329,7 @@ def store_savings(account, volume_size, region, com_pricing, dydb_client, vol_sa
     except dydb_client.exceptions.ClientError as e:
         print(f"Failed to update DynamoDB: {e.response['Error']['Message']}")
         return None
+
     
 def main(aws_access_key_id, aws_secret_access_key, aws_session_token=None):
     try:
