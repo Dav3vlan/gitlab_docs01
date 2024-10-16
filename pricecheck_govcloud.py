@@ -108,14 +108,14 @@ def main(aws_access_key_id, aws_secret_access_key, aws_session_token=None):
         print(f"An error occurred: {str(e)}")
 
 
-def store_savings(account, volume_size, region, com_pricing, dydb_client, vol_savings_table):
+def store_savings(account, volume_size, region, volume_type, dydb_client, vol_savings_table):
     try:
         # Fetch the current size and savings for the tenant (account) using client
         response = dydb_client.get_item(
             TableName=vol_savings_table,
             Key={
                 'Account': {'S': account},  # Partition key
-                'Region': {'S': region}  # Sort key (if applicable)
+                'region': {'S': region}     # Lowercase region key
             }
         )
         
@@ -130,9 +130,14 @@ def store_savings(account, volume_size, region, com_pricing, dydb_client, vol_sa
         
         # Ensure volume_size is a float or int, in case it's provided as a string
         volume_size = float(volume_size)
+
+        # Get the cost per GB in this region using the volume type
+        volume_cost_per_gb = get_volume_price(region, volume_type)
         
-        # Get the cost per GB in this region
-        volume_cost_per_gb = com_pricing[region]
+        # Check if the price was found
+        if volume_cost_per_gb is None:
+            print(f"Price not found for volume type '{volume_type}' in region '{region}'.")
+            return None
         
         # Calculate the savings for the current volume size (not cumulative yet)
         current_run_savings = volume_size * volume_cost_per_gb
@@ -148,7 +153,7 @@ def store_savings(account, volume_size, region, com_pricing, dydb_client, vol_sa
             TableName=vol_savings_table,
             Item={
                 'Account': {'S': account},   # Partition key
-                'Region': {'S': region},     # Sort key (if applicable)
+                'region': {'S': region},      # Lowercase region key
                 'Size': {'N': str(total_size)},    # Total size of deleted volumes
                 'Savings': {'N': str(total_savings)}  # Total cumulative savings
             }
@@ -160,6 +165,10 @@ def store_savings(account, volume_size, region, com_pricing, dydb_client, vol_sa
     except dydb_client.exceptions.ClientError as e:
         print(f"Failed to update DynamoDB: {e.response['Error']['Message']}")
         return None
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return None
+
 
 # Example usage
 govcloud_session = boto3.Session()  # Replace with your actual session initialization
