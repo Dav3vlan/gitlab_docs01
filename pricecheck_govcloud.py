@@ -112,42 +112,49 @@ import boto3
 
 def store_savings(account, volume_size, region, com_pricing, dydb_client, vol_savings_table):
     try:
-        # Fetch the current size for the tenant (account) using client
+        # Fetch the current size and savings for the tenant (account) using client
         response = dydb_client.get_item(
             TableName=vol_savings_table,
             Key={
-                'Account': {'S': account}  # Assuming Account is a string
+                'Account': {'S': account},  # Partition key
+                'Region': {'S': region}  # Sort key (if applicable)
             }
         )
         
         if 'Item' in response:
-            # Previous saved size exists, get the value
-            previous_size = int(response['Item']['Size']['N'])  # Assuming size is stored as a number
+            # Previous saved size and savings exist, get the values
+            previous_size = int(response['Item']['Size']['N'])  # Size is stored as a number
+            previous_savings = float(response['Item']['Savings']['N'])  # Savings is stored as a number
         else:
             # No previous data, initialize to 0
             previous_size = 0
+            previous_savings = 0.0
         
         # Get the cost per GB in this region
         volume_cost_per_gb = com_pricing[region]
         
-        # Calculate the savings for the current volume size (not cumulative)
-        savings = volume_size * volume_cost_per_gb
+        # Calculate the savings for the current volume size (not cumulative yet)
+        current_run_savings = volume_size * volume_cost_per_gb
         
-        # Update the total size after calculating the savings
+        # Update the total size after calculating the savings for the current run
         total_size = previous_size + volume_size
         
-        # Update the table with the new size and savings using put_item
+        # Add current run savings to the previous total savings
+        total_savings = previous_savings + current_run_savings
+        
+        # Update the table with the new total size and total cumulative savings using put_item
         dydb_client.put_item(
             TableName=vol_savings_table,
             Item={
-                'Account': {'S': account},
-                'Size': {'N': str(total_size)},  # DynamoDB expects numbers as strings
-                'Savings': {'N': str(savings)}   # Saving for this run, not cumulative
+                'Account': {'S': account},   # Partition key
+                'Region': {'S': region},     # Sort key (if applicable)
+                'Size': {'N': str(total_size)},    # Total size of deleted volumes
+                'Savings': {'N': str(total_savings)}  # Total cumulative savings
             }
         )
         
-        print(f"Updated savings for account {account}: {savings} USD")
-        return savings
+        print(f"Updated cumulative savings for account {account} in region {region}: {total_savings} USD")
+        return total_savings
         
     except dydb_client.exceptions.ClientError as e:
         print(f"Failed to update DynamoDB: {e.response['Error']['Message']}")
