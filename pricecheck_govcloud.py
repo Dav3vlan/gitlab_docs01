@@ -108,8 +108,6 @@ def main(aws_access_key_id, aws_secret_access_key, aws_session_token=None):
         print(f"An error occurred: {str(e)}")
 
 
-import boto3
-
 def store_savings(account, volume_size, region, com_pricing, dydb_client, vol_savings_table):
     try:
         # Fetch the current size and savings for the tenant (account) using client
@@ -123,12 +121,15 @@ def store_savings(account, volume_size, region, com_pricing, dydb_client, vol_sa
         
         if 'Item' in response:
             # Previous saved size and savings exist, get the values
-            previous_size = int(response['Item']['Size']['N'])  # Size is stored as a number
-            previous_savings = float(response['Item']['Savings']['N'])  # Savings is stored as a number
+            previous_size = int(response['Item']['Size']['N'])  # Convert to int
+            previous_savings = float(response['Item']['Savings']['N'])  # Convert to float
         else:
             # No previous data, initialize to 0
             previous_size = 0
             previous_savings = 0.0
+        
+        # Ensure volume_size is a float or int, in case it's provided as a string
+        volume_size = float(volume_size)
         
         # Get the cost per GB in this region
         volume_cost_per_gb = com_pricing[region]
