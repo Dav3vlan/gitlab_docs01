@@ -127,14 +127,14 @@ def store_savings(account, volume_size, region, com_pricing, dydb_client, vol_sa
             # No previous data, initialize to 0
             previous_size = 0
         
-        # Add the current volume size to the previous size
-        total_size = previous_size + volume_size
-        
         # Get the cost per GB in this region
         volume_cost_per_gb = com_pricing[region]
         
-        # Calculate the savings (total size * cost per GB)
-        savings = total_size * volume_cost_per_gb
+        # Calculate the savings for the current volume size (not cumulative)
+        savings = volume_size * volume_cost_per_gb
+        
+        # Update the total size after calculating the savings
+        total_size = previous_size + volume_size
         
         # Update the table with the new size and savings using put_item
         dydb_client.put_item(
@@ -142,7 +142,7 @@ def store_savings(account, volume_size, region, com_pricing, dydb_client, vol_sa
             Item={
                 'Account': {'S': account},
                 'Size': {'N': str(total_size)},  # DynamoDB expects numbers as strings
-                'Savings': {'N': str(savings)}
+                'Savings': {'N': str(savings)}   # Saving for this run, not cumulative
             }
         )
         
