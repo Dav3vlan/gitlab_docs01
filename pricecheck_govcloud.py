@@ -213,6 +213,7 @@ def store_savings(account, volume_size, region, volume_type, dydb_client, vol_sa
         
         # Add current run savings to the previous total savings
         total_savings = previous_savings + current_run_savings
+        total_savings = round(total_savings, 2)
         
         # Update the table with the new total size and total cumulative savings using put_item
         dydb_client.put_item(
