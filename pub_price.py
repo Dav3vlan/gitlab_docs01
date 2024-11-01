@@ -22,9 +22,9 @@ def get_aws_pricing(region, service='AmazonEC2', product_family='Storage'):
                 
                 if volume_type == 'General Purpose':
                     gp_types.add(volume_api_name)
-                    volume_type = volume_api_name  # Use gp2 or gp3 instead of General Purpose
+                    volume_type = volume_api_name  # Use gp2 or gp3 instead of General Purpose.  
                 
-                if sku in data['terms']['OnDemand']:
+                if sku in data['terms']['OnDemand']: # Verify this asap. 
                     price_dimensions = next(iter(data['terms']['OnDemand'][sku].values()))['priceDimensions']
                     price = next(iter(price_dimensions.values()))['pricePerUnit']['USD']
                     volume_prices[volume_type] = float(price)
