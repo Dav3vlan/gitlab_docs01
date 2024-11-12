@@ -23,6 +23,7 @@ fi
 # Loop through each password in the file and try to unlock
 while IFS= read -r PASSWORD; do
   if [[ $PASSWORD != "#"* ]]; then
+    PASSWORD=$(echo "$PASSWORD" | sed 's/^[ \t]*//;s/[ \t]*$//')
     echo "Trying password: $PASSWORD"
     printf "%s" "$PASSWORD" | sudo cryptsetup open "$LUKS_PARTITION" "$LUKS_NAME" --key-file=-
 
