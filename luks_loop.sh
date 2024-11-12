@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# output helper: 
+# for y in {1988..2024}; do   echo "word$y"; done
+
 LUKS_PARTITION="/dev/nvme0n1p3"
 LUKS_NAME="encrypted_volume"
 MOUNT_POINT="/home/$USER/Desktop/secure"
