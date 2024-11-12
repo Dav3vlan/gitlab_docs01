@@ -1,9 +1,9 @@
 #!/bin/bash
 
-LUKS_PARTITION="/dev/sdX"       # Replace with your LUKS partition (e.g., /dev/sdaX)
-LUKS_NAME="encrypted_volume"    # Name for the unlocked LUKS device
-MOUNT_POINT="/mnt/secure"       # Mount point for the decrypted partition
-PASSWORD_FILE="pass.txt"        # File containing possible passwords, one per line
+LUKS_PARTITION="/dev/sdX"
+LUKS_NAME="encrypted_volume"
+MOUNT_POINT="/home/$USER/Desktop/secure"
+PASSWORD_FILE="pass.txt"
 
 # Ensure mount point directory exists
 if [ ! -d "$MOUNT_POINT" ]; then
