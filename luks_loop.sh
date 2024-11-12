@@ -1,6 +1,6 @@
 #!/bin/bash
 
-LUKS_PARTITION="/dev/sdX"
+LUKS_PARTITION="/dev/nvme0n1p3"
 LUKS_NAME="encrypted_volume"
 MOUNT_POINT="/home/$USER/Desktop/secure"
 PASSWORD_FILE="pass.txt"
@@ -19,16 +19,18 @@ fi
 
 # Loop through each password in the file and try to unlock
 while IFS= read -r PASSWORD; do
-  echo "Trying password: $PASSWORD"
-  echo "$PASSWORD" | sudo cryptsetup open "$LUKS_PARTITION" "$LUKS_NAME" --key-file=-
+  if [[ $PASSWORD != "#"* ]]; then
+    echo "Trying password: $PASSWORD"
+    echo "$PASSWORD" | sudo cryptsetup open "$LUKS_PARTITION" "$LUKS_NAME" --key-file=-
 
-  # Check if unlocking was successful
-  if [ $? -eq 0 ]; then
-    echo "Successfully unlocked LUKS partition with password."
-    PASSWORD_FOUND=1
-    break
-  else
-    echo "Failed to unlock with this password."
+    # Check if unlocking was successful
+    if [ $? -eq 0 ]; then
+      echo "Successfully unlocked LUKS partition with password."
+      PASSWORD_FOUND=1
+      break
+    else
+      echo "Failed to unlock with this password."
+    fi
   fi
 done < "$PASSWORD_FILE"
 
