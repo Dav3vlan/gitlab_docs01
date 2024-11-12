@@ -24,7 +24,7 @@ fi
 while IFS= read -r PASSWORD; do
   if [[ $PASSWORD != "#"* ]]; then
     echo "Trying password: $PASSWORD"
-    echo "$PASSWORD" | sudo cryptsetup open "$LUKS_PARTITION" "$LUKS_NAME" --key-file=-
+    printf "%s" "$PASSWORD" | sudo cryptsetup open "$LUKS_PARTITION" "$LUKS_NAME" --key-file=-
 
     # Check if unlocking was successful
     if [ $? -eq 0 ]; then
