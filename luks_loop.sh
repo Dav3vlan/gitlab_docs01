@@ -28,8 +28,8 @@ while IFS= read -r PASSWORD; do
       echo "Successfully unlocked LUKS partition with password."
       PASSWORD_FOUND=1
       break
-    else
-      echo "Failed to unlock with this password."
+    # else
+      # echo "Failed to unlock with this password."
     fi
   fi
 done < "$PASSWORD_FILE"
