@@ -23,4 +23,11 @@ Notes:
     "username" = the remote login username (e.g., ec2-user, admin, etc.)
 
 
-    
+# get  org id
+
+curl -k -H "Authorization: Bearer $AAP_TOKEN" \
+     -H "Accept: application/json" \
+     "https://mysite.io/api/controller/v2/job_templates/?name=rhel9-stig-template"
+curl -k -H "Authorization: Bearer $AAP_TOKEN" \
+     -H "Accept: application/json" \
+     "https://mysite.io/api/controller/v2/job_templates/?name=rhel9-stig-template"
