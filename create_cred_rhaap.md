@@ -31,3 +31,14 @@ curl -k -H "Authorization: Bearer $AAP_TOKEN" \
 curl -k -H "Authorization: Bearer $AAP_TOKEN" \
      -H "Accept: application/json" \
      "https://mysite.io/api/controller/v2/job_templates/?name=rhel9-stig-template"
+
+
+# associte with job id
+
+curl -k -X POST \
+  -H "Authorization: Bearer $AAP_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"id": 17}' \
+  https://mysite.io/api/controller/v2/job_templates/42/credentials/
+
+
