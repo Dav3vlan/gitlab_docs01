@@ -12,3 +12,15 @@ curl -k -X POST \
     }
   }' \
   https://mysite.io/api/controller/v2/credentials/
+
+
+Notes:
+
+    "credential_type": 1 = built-in SSH/Machine credential
+
+    "organization": 1 = your org ID (usually 1, but confirm via /api/controller/v2/organizations/)
+
+    "username" = the remote login username (e.g., ec2-user, admin, etc.)
+
+
+    
